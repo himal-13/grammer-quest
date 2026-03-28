@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
-import '../core/constants/app_constants.dart';
 
 class CoinProvider extends ChangeNotifier {
   int _coins = StorageService.getCoins();

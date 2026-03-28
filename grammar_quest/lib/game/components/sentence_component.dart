@@ -30,9 +30,11 @@ class SentenceComponent extends PositionComponent {
     int blankIndex = 0;
 
     for (final word in words) {
-      if (word.contains('___')) {
+      final isBlank = word.contains('___');
+      
+      if (isBlank) {
         // Handle blank slot
-        final slotWidth = 80.0;
+        final slotWidth = 85.0;
         if (xOffset + slotWidth > maxWidth) {
           xOffset = 0;
           yOffset += lineHeight;
@@ -40,18 +42,19 @@ class SentenceComponent extends PositionComponent {
         
         final slot = BlankSlotComponent(
           correctWord: game.level.answers[blankIndex++],
-          position: Vector2(xOffset, yOffset),
-          size: Vector2(slotWidth, 30),
+          position: Vector2(xOffset, yOffset + 10), // Offset a bit for alignment
+          size: Vector2(slotWidth, 32),
         );
-        game.add(slot);
+        add(slot); // Add to SentenceComponent instead of game
         game.blankSlots.add(slot);
+        
         xOffset += slotWidth + spaceWidth;
       } else {
         // Handle normal word
         final textPainter = TextPainter(
           text: TextSpan(
             text: word,
-            style: const TextStyle(color: Colors.black, fontSize: 18),
+            style: const TextStyle(color: Color(0xFF2D3436), fontSize: 18), // lightText
           ),
           textDirection: TextDirection.ltr,
         )..layout();
@@ -65,7 +68,11 @@ class SentenceComponent extends PositionComponent {
           text: word,
           position: Vector2(xOffset, yOffset),
           textRenderer: TextPaint(
-            style: const TextStyle(color: Colors.black, fontSize: 18),
+            style: const TextStyle(
+              color: Color(0xFF2D3436), 
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         );
         add(wordComp);
@@ -73,6 +80,7 @@ class SentenceComponent extends PositionComponent {
       }
     }
     
+    // Set size based on content
     size = Vector2(maxWidth, yOffset + lineHeight);
   }
 }

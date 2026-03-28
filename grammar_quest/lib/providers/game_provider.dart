@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
-import '../data/models/level_model.dart';
-import '../data/level_data.dart';
 
 class GameProvider extends ChangeNotifier {
   int _unlockedLevel = StorageService.getUnlockedLevel();

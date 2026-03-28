@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../widgets/coin_display.dart';
 import '../widgets/xp_bar.dart';
-import '../providers/game_provider.dart';
 import 'level_screen.dart';
 import 'settings_screen.dart';
 

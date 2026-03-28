@@ -4,10 +4,9 @@ import 'package:flame/effects.dart';
 import 'package:flutter/material.dart';
 import '../grammar_game.dart';
 
-class WordTileComponent extends PositionComponent with DragCallbacks, TapCallbacks, HasGameRef<GrammarGame> {
+class WordTileComponent extends PositionComponent with TapCallbacks, HasGameRef<GrammarGame> {
   final String word;
   late Vector2 originalPosition;
-  bool _isDragging = false;
 
   WordTileComponent({
     required this.word,
@@ -19,17 +18,30 @@ class WordTileComponent extends PositionComponent with DragCallbacks, TapCallbac
 
   @override
   void render(Canvas canvas) {
+    final shadowPaint = Paint()
+      ..color = Colors.black.withOpacity(0.1)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    
+    final rect = Rect.fromLTWH(0, 0, size.x, size.y);
+    final rRect = RRect.fromRectAndRadius(rect, const Radius.circular(12));
+    
+    // Draw shadow
+    canvas.drawRRect(rRect.shift(const Offset(0, 2)), shadowPaint);
+
     final paint = Paint()
-      ..color = _isDragging ? Colors.blue.withOpacity(0.8) : Colors.blue.shade400
+      ..color = const Color(0xFF4A90E2)
       ..style = PaintingStyle.fill;
       
-    final rect = Rect.fromLTWH(0, 0, size.x, size.y);
-    canvas.drawRRect(RRect.fromRectAndRadius(rect, const Radius.circular(8)), paint);
+    canvas.drawRRect(rRect, paint);
     
     final textPainter = TextPainter(
       text: TextSpan(
         text: word,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+        style: const TextStyle(
+          color: Colors.white, 
+          fontWeight: FontWeight.bold, 
+          fontSize: 16
+        ),
       ),
       textDirection: TextDirection.ltr,
     );
@@ -41,26 +53,8 @@ class WordTileComponent extends PositionComponent with DragCallbacks, TapCallbac
   }
 
   @override
-  void onDragStart(DragStartEvent event) {
-    _isDragging = true;
-    priority = 100; // Bring to front
-  }
-
-  @override
-  void onDragUpdate(DragUpdateEvent event) {
-    position += event.localDelta;
-  }
-
-  @override
-  void onDragEnd(DragEndEvent event) {
-    _isDragging = false;
-    priority = 0;
-    gameRef.onWordDropped(this, position + size / 2);
-  }
-
-  @override
   void onTapUp(TapUpEvent event) {
-    gameRef.onWordDropped(this, position + size / 2);
+    gameRef.onWordTapped(this);
   }
 
   void shake() {

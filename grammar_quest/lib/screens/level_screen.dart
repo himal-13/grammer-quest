@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/game_provider.dart';
-import '../providers/coin_provider.dart';
 import '../data/level_data.dart';
 import '../widgets/level_tile.dart';
 import '../widgets/coin_display.dart';
