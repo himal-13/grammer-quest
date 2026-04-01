@@ -1,3 +1,5 @@
+enum LevelType { paragraph, sentence }
+
 class Level {
   final int id;
   final String title;
@@ -6,6 +8,7 @@ class Level {
   final List<String> options;
   final List<String> answers;
   final String contextHint; // Optional hint about the paragraph
+  final LevelType type;
 
   Level({
     required this.id,
@@ -15,6 +18,7 @@ class Level {
     required this.options,
     required this.answers,
     this.contextHint = '',
+    this.type = LevelType.paragraph,
   });
 
   factory Level.fromJson(Map<String, dynamic> json) {
@@ -26,6 +30,7 @@ class Level {
       options: List<String>.from(json['options'] as List),
       answers: List<String>.from(json['answers'] as List),
       contextHint: json['contextHint'] as String? ?? '',
+      type: json['type'] == 'sentence' ? LevelType.sentence : LevelType.paragraph,
     );
   }
 }

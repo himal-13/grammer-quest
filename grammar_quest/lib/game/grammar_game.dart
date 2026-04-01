@@ -2,6 +2,7 @@ import 'package:flame/game.dart';
 import 'package:flame/events.dart';
 import 'package:flutter/material.dart';
 import '../data/models/level_model.dart';
+import '../services/audio_service.dart';
 import 'components/word_tile_component.dart';
 import 'components/blank_slot_component.dart';
 import 'components/paragraph_sentence_component.dart';
@@ -24,6 +25,7 @@ class GrammarGame extends FlameGame with DragCallbacks {
   late ParagraphSentenceComponent paragraphComponent;
   final List<WordTileComponent> wordTiles = [];
   final List<BlankSlotComponent> blankSlots = [];
+  final List<String> _originalOptions = [];
 
   bool isPerfect = true;
   int correctlyFilled = 0;
@@ -38,6 +40,9 @@ class GrammarGame extends FlameGame with DragCallbacks {
   Future<void> onLoad() async {
     await super.onLoad();
     
+    // Store original options
+    _originalOptions.addAll(level.options);
+    
     // Add paragraph component
     paragraphComponent = ParagraphSentenceComponent(
       paragraph: level.paragraph,
@@ -51,7 +56,7 @@ class GrammarGame extends FlameGame with DragCallbacks {
   }
 
   void _setupWordBank() {
-    final shuffledOptions = List<String>.from(level.options)..shuffle();
+    final shuffledOptions = List<String>.from(_originalOptions)..shuffle();
     const spacing = 12.0;
     const tileHeight = 48.0;
     
@@ -85,6 +90,7 @@ class GrammarGame extends FlameGame with DragCallbacks {
         word: shuffledOptions[i],
         position: Vector2(xOffset, yOffset),
         size: Vector2(tileWidth, tileHeight),
+        originalWord: shuffledOptions[i],
       );
       wordTiles.add(tile);
       add(tile);
@@ -100,6 +106,7 @@ class GrammarGame extends FlameGame with DragCallbacks {
         slot.fill(tile.word);
         tile.removeFromParent();
         totalFilled++;
+        AudioService.playSuccess();
         onStateChanged?.call();
         return;
       }
@@ -122,8 +129,10 @@ class GrammarGame extends FlameGame with DragCallbacks {
     correctlyFilled = currentCorrect;
     
     if (allCorrect) {
+      AudioService.playLevelComplete();
       onComplete?.call(isPerfect);
     } else {
+      AudioService.playWrong();
       onWrongAnswer();
     }
     
@@ -136,6 +145,125 @@ class GrammarGame extends FlameGame with DragCallbacks {
         slot.isError = true;
       }
     }
+    onStateChanged?.call();
+  }
+
+  void resetErrorsAndReturnWords() {
+    // Collect all error words and remove them from slots
+    final List<String> errorWords = [];
+    
+    for (final slot in blankSlots) {
+      if (slot.isError && slot.filledWord != null) {
+        errorWords.add(slot.filledWord!);
+        slot.clear(); // Clear the slot
+        totalFilled--;
+      }
+    }
+    
+    // Reset error flags on all slots
+    for (final slot in blankSlots) {
+      slot.isError = false;
+    }
+    
+    // Return error words to word bank
+    if (errorWords.isNotEmpty) {
+      _returnWordsToBank(errorWords);
+    }
+    
+    onStateChanged?.call();
+  }
+
+  void _returnWordsToBank(List<String> words) {
+    // Get current correctly filled words
+    final Set<String> correctlyFilledWords = {};
+    for (final slot in blankSlots) {
+      if (slot.filledWord != null && slot.filledWord == slot.correctWord) {
+        correctlyFilledWords.add(slot.filledWord!);
+      }
+    }
+    
+    // Remove all existing word tiles
+    for (var tile in wordTiles) {
+      if (tile.isMounted) {
+        tile.removeFromParent();
+      }
+    }
+    wordTiles.clear();
+    
+    // Create a list of words that should be in the bank:
+    // All original words minus the correctly filled words
+    final Set<String> availableWords = {};
+    availableWords.addAll(_originalOptions);
+    
+    // Remove words that are correctly placed
+    for (final word in correctlyFilledWords) {
+      availableWords.remove(word);
+    }
+    
+    // Add back the error words
+    availableWords.addAll(words);
+    
+    // Convert to list and shuffle
+    final List<String> wordList = availableWords.toList()..shuffle();
+    
+    // Recreate word tiles
+    const spacing = 12.0;
+    const tileHeight = 48.0;
+    
+    double xOffset = 20.0;
+    double yOffset = size.y - 140;
+    
+    for (var i = 0; i < wordList.length; i++) {
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: wordList[i],
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      
+      final tileWidth = textPainter.width + 32;
+      
+      if (xOffset + tileWidth > size.x - 20) {
+        xOffset = 20.0;
+        yOffset += tileHeight + spacing;
+        
+        if (yOffset + tileHeight > size.y - 20) {
+          yOffset = size.y - 140;
+          xOffset = 20.0;
+        }
+      }
+
+      final tile = WordTileComponent(
+        word: wordList[i],
+        position: Vector2(xOffset, yOffset),
+        size: Vector2(tileWidth, tileHeight),
+        originalWord: wordList[i],
+      );
+      wordTiles.add(tile);
+      add(tile);
+      
+      xOffset += tileWidth + spacing;
+    }
+  }
+
+  bool get hasErrors {
+    for (final slot in blankSlots) {
+      if (slot.isError) return true;
+    }
+    return false;
+  }
+
+  bool get allAnswersCorrect {
+    for (final slot in blankSlots) {
+      if (slot.filledWord == null) return false;
+      if (slot.filledWord != slot.correctWord) return false;
+    }
+    return totalFilled == blanksCount;
+  }
+
+  List<BlankSlotComponent> get errorSlots {
+    return blankSlots.where((slot) => slot.isError).toList();
   }
 
   void retry() {
@@ -147,13 +275,18 @@ class GrammarGame extends FlameGame with DragCallbacks {
     correctlyFilled = 0;
     isPerfect = true;
     
-    // Reset word tiles (this is tricky because they were removed)
-    // Simplest is to reload the word bank
+    // Reset error flags
+    for (final slot in blankSlots) {
+      slot.isError = false;
+    }
+    
+    // Reset word tiles with all original words
     _resetWordBank();
+    onStateChanged?.call();
   }
 
   void _resetWordBank() {
-    // Remove existing tiles if any (though they are mostly gone)
+    // Remove existing tiles
     for (var tile in wordTiles) {
       if (tile.isMounted) {
         tile.removeFromParent();
@@ -170,7 +303,7 @@ class GrammarGame extends FlameGame with DragCallbacks {
     }
     correctlyFilled = level.blanks;
     totalFilled = level.blanks;
-    onComplete?.call(false); // Not perfect if skipped
+    onComplete?.call(false);
   }
 
   String getCompletedParagraph() {

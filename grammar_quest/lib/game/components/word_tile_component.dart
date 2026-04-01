@@ -6,10 +6,12 @@ import '../grammar_game.dart';
 
 class WordTileComponent extends PositionComponent with TapCallbacks, HasGameRef<GrammarGame> {
   final String word;
+  final String originalWord;
   late Vector2 originalPosition;
 
   WordTileComponent({
     required this.word,
+    required this.originalWord,
     required Vector2 position,
     required Vector2 size,
   }) : super(position: position, size: size) {

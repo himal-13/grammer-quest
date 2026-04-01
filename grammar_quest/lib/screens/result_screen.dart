@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
 import '../data/models/level_model.dart';
 import '../data/level_data.dart';
-import '../services/audio_service.dart';
 import 'game_screen.dart';
 import 'level_screen.dart';
 
@@ -38,7 +37,6 @@ class _ResultScreenState extends State<ResultScreen> {
     if (widget.stars >= 2) {
       _confettiController.play();
     }
-    AudioService.playLevelComplete();
   }
 
   @override
@@ -50,149 +48,112 @@ class _ResultScreenState extends State<ResultScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+    final size = MediaQuery.of(context).size;
+    final isSmallScreen = size.height < 600;
+
     return Scaffold(
       body: Stack(
         children: [
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(isSmallScreen ? 16.0 : 24.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  const Spacer(),
                   Text(
                     widget.stars == 3 ? 'Perfect!' : 'Level Complete!',
                     style: TextStyle(
-                      fontSize: 32, 
+                      fontSize: isSmallScreen ? 24 : 32, 
                       fontWeight: FontWeight.bold,
                       color: widget.stars == 3 ? Colors.amber : theme.primaryColor,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: isSmallScreen ? 8 : 16),
                   Text(
                     widget.level.title,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: isSmallScreen ? 16 : 20, fontWeight: FontWeight.w500),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: isSmallScreen ? 12 : 24),
+                  
                   // Stars display
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(3, (index) {
                       final hasStar = index < widget.stars;
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Icon(
-                          Icons.star_rounded,
-                          size: 56,
-                          color: hasStar ? Colors.amber : Colors.grey.withOpacity(0.3),
-                        ),
+                      return Icon(
+                        Icons.star_rounded,
+                        size: isSmallScreen ? 48 : 64,
+                        color: hasStar ? Colors.amber : Colors.grey.withOpacity(0.3),
                       );
                     }),
                   ),
-                  const SizedBox(height: 16),
-                  if (widget.perfect)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.amber.shade300, Colors.amber.shade600],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        '⭐ PERFECT SCORE! ⭐',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 32),
-                  _buildStatRow(context, 'Coins Earned', '+${widget.coinsEarned}', Icons.monetization_on, Colors.amber),
-                  const SizedBox(height: 12),
-                  _buildStatRow(context, 'XP Gained', '+${widget.xpGained}', Icons.bolt, Colors.blue),
-                  const SizedBox(height: 12),
-                  _buildStatRow(context, 'Correct Answers', '${widget.stars == 3 ? widget.level.blanks : widget.level.blanks - 1}/${widget.level.blanks}', Icons.check_circle, Colors.green),
-                  const SizedBox(height: 24),
-                  // Completed Paragraph display
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.blue.withOpacity(0.1)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Review Paragraph:',
-                          style: TextStyle(
-                            fontSize: 14, 
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          widget.completedParagraph,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            height: 1.5,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  // Buttons
-                  if (widget.level.id < LevelData.getTotalLevels())
-                    _buildActionButton(
-                      context,
-                      'Next Level',
-                      Icons.skip_next_rounded,
-                      () {
-                        final nextLevel = LevelData.getLevel(widget.level.id + 1);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => GameScreen(level: nextLevel)),
-                        );
-                      },
-                      isPrimary: true,
-                    ),
-                  const SizedBox(height: 12),
+                  
+                  SizedBox(height: isSmallScreen ? 16 : 32),
+                  
+                  // Stats in a row to save vertical space
                   Row(
                     children: [
-                      Expanded(
-                        child: _buildActionButton(
-                          context,
-                          'Replay',
-                          Icons.replay_rounded,
-                          () => Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => GameScreen(level: widget.level)),
-                          ),
-                        ),
-                      ),
+                      Expanded(child: _buildMiniStat(context, '+${widget.coinsEarned}', Icons.monetization_on, Colors.amber)),
                       const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildActionButton(
-                          context,
-                          'Levels',
-                          Icons.grid_view_rounded,
-                          () => Navigator.pushAndRemoveUntil(
+                      Expanded(child: _buildMiniStat(context, '+${widget.xpGained}', Icons.bolt, Colors.blue)),
+                    ],
+                  ),
+                  
+                  const Spacer(),
+                  
+                  // Buttons
+                  Column(
+                    children: [
+                      if (widget.level.id < LevelData.getTotalLevels())
+                        SizedBox(
+                          width: double.infinity,
+                          child: _buildActionButton(
                             context,
-                            MaterialPageRoute(builder: (context) => const LevelScreen()),
-                            (route) => route.isFirst,
+                            'Next Level',
+                            Icons.skip_next_rounded,
+                            () {
+                              final nextLevel = LevelData.getLevel(widget.level.id + 1);
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => GameScreen(level: nextLevel)),
+                              );
+                            },
+                            isPrimary: true,
                           ),
                         ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildActionButton(
+                              context,
+                              'Replay',
+                              Icons.replay_rounded,
+                              () => Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => GameScreen(level: widget.level)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildActionButton(
+                              context,
+                              'Levels',
+                              Icons.grid_view_rounded,
+                              () => Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(builder: (context) => const LevelScreen()),
+                                (route) => route.isFirst,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   TextButton(
                     onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
                     child: const Text('Back to Home'),
@@ -209,7 +170,7 @@ class _ResultScreenState extends State<ResultScreen> {
                 blastDirectionality: BlastDirectionality.explosive,
                 shouldLoop: false,
                 colors: const [Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple, Colors.amber],
-                numberOfParticles: 50,
+                numberOfParticles: 20,
                 gravity: 0.2,
               ),
             ),
@@ -218,41 +179,29 @@ class _ResultScreenState extends State<ResultScreen> {
     );
   }
 
-  Widget _buildStatRow(BuildContext context, String label, String value, IconData icon, Color color) {
+  Widget _buildMiniStat(BuildContext context, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(width: 16),
-          Text(label, style: const TextStyle(fontSize: 16)),
-          const Spacer(),
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
           Text(
             value,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
           ),
         ],
       ),
     );
   }
+
+
 
   Widget _buildActionButton(
     BuildContext context,

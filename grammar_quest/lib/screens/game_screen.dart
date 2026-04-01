@@ -18,6 +18,8 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late GrammarGame _game;
+  bool _errorsVisible = false;
+  bool _showSuccessMessage = false;
 
   @override
   void initState() {
@@ -85,10 +87,71 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  void _showErrors() {
+    final coinProvider = Provider.of<CoinProvider>(context, listen: false);
+    if (coinProvider.spendCoins(20)) {
+      _game.showErrors();
+      setState(() {
+        _errorsVisible = true;
+        _showSuccessMessage = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🔍 Errors highlighted! Fix them and check again.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } else {
+      _showNoCoinsSnackBar();
+    }
+  }
+
+  void _resetErrorsAndReturnWords() {
+    _game.resetErrorsAndReturnWords();
+    setState(() {
+      _errorsVisible = false;
+      _showSuccessMessage = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('🔄 Error words returned to the bottom! Try again.'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _checkAndShowSuccess() {
+    if (_game.allAnswersCorrect) {
+      setState(() {
+        _showSuccessMessage = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ All answers are correct! Click CHECK ANSWER to complete the level.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } else {
+      setState(() {
+        _showSuccessMessage = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    Theme.of(context);
+    final isAllFilled = _game.totalFilled == _game.blanksCount;
+    final hasErrors = _game.hasErrors;
+    final allCorrect = _game.allAnswersCorrect;
     
+    // Determine if we should show the Show Errors button
+    final shouldShowErrorsButton = isAllFilled && !_errorsVisible && !allCorrect;
+    // Determine if we should show the Reset Errors button
+    final shouldShowResetButton = _errorsVisible && hasErrors;
+    // Determine if Check Answer button should be enabled
+    final canCheckAnswers = isAllFilled && !hasErrors;
+
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -112,6 +175,43 @@ class _GameScreenState extends State<GameScreen> {
       body: Stack(
         children: [
           GameWidget(game: _game),
+          
+          // Success Message Overlay (when all answers are correct)
+          if (_showSuccessMessage && isAllFilled && allCorrect)
+            Positioned(
+              top: 100,
+              left: 20,
+              right: 20,
+              child: Material(
+                elevation: 4,
+                borderRadius: BorderRadius.circular(12),
+                color: Colors.green.withOpacity(0.9),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.white, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: const Text(
+                          'All answers correct! Click CHECK ANSWER to complete the level!',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white, size: 20),
+                        onPressed: () {
+                          setState(() {
+                            _showSuccessMessage = false;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          
           // Top Buttons (Retry & Skip)
           Positioned(
             top: 16,
@@ -121,7 +221,13 @@ class _GameScreenState extends State<GameScreen> {
                 _buildGameButton(
                   icon: Icons.replay_rounded,
                   label: 'Retry',
-                  onPressed: () => setState(() => _game.retry()),
+                  onPressed: () {
+                    setState(() {
+                      _game.retry();
+                      _errorsVisible = false;
+                      _showSuccessMessage = false;
+                    });
+                  },
                   color: Colors.orange,
                 ),
                 const SizedBox(height: 8),
@@ -141,45 +247,61 @@ class _GameScreenState extends State<GameScreen> {
               ],
             ),
           ),
-          // Bottom Buttons (Hint, Show Error, Check)
+          
+          // Bottom Buttons
           Positioned(
             bottom: 24,
             right: 24,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                if (_game.totalFilled > 0 && _game.totalFilled < _game.blanksCount)
+                // Hint button - only show when not all filled
+                if (!isAllFilled)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8.0),
                     child: _buildGameButton(
-                      icon: Icons.help_outline_rounded,
+                      icon: Icons.lightbulb_outline_rounded,
                       label: 'Hint (20)',
                       onPressed: _useHint,
                       color: Colors.blue,
                     ),
                   ),
-                if (_game.totalFilled == _game.blanksCount)
+                
+                // Show Errors button - only show when all filled, no errors visible yet, and NOT all correct
+                if (shouldShowErrorsButton)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8.0),
                     child: _buildGameButton(
                       icon: Icons.error_outline_rounded,
                       label: 'Show Errors (20)',
-                      onPressed: () {
-                        final coinProvider = Provider.of<CoinProvider>(context, listen: false);
-                        if (coinProvider.spendCoins(20)) {
-                          _game.showErrors();
-                          setState(() {});
-                        } else {
-                          _showNoCoinsSnackBar();
-                        }
-                      },
+                      onPressed: _showErrors,
                       color: Colors.redAccent,
                     ),
                   ),
+                
+                // Reset Errors button - only show when errors are visible
+                if (shouldShowResetButton)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: _buildGameButton(
+                      icon: Icons.refresh_rounded,
+                      label: 'Reset Errors',
+                      onPressed: _resetErrorsAndReturnWords,
+                      color: Colors.orange,
+                    ),
+                  ),
+                
+                // Check Answer button
                 const SizedBox(height: 8),
                 ElevatedButton.icon(
-                  onPressed: _game.totalFilled == _game.blanksCount 
-                      ? () => _game.checkAnswers() 
+                  onPressed: canCheckAnswers 
+                      ? () {
+                          if (allCorrect) {
+                            _game.checkAnswers();
+                          } else {
+                            _checkAndShowSuccess();
+                          }
+                        }
                       : null,
                   icon: const Icon(Icons.check_circle_outline),
                   label: const Text('CHECK ANSWER', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -191,6 +313,46 @@ class _GameScreenState extends State<GameScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                   ),
                 ),
+                
+                // Helper text based on state
+                if (isAllFilled && !allCorrect && !_errorsVisible)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      'Some answers may be incorrect. Click "Show Errors" to check!',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                
+                if (isAllFilled && allCorrect && !_errorsVisible)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      '✓ All answers correct! Click CHECK ANSWER to complete!',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                
+                if (isAllFilled && hasErrors)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      '⚠️ Click "Reset Errors" to fix incorrect answers!',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.redAccent,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -228,10 +390,9 @@ class _GameScreenState extends State<GameScreen> {
         if (slot.filledWord == null) {
           slot.fill(slot.correctWord);
           _game.totalFilled++;
-          setState(() {});
-          if (_game.totalFilled == _game.blanksCount) {
-            // Success call? No, wait for check.
-          }
+          setState(() {
+            _showSuccessMessage = false;
+          });
           break;
         }
       }

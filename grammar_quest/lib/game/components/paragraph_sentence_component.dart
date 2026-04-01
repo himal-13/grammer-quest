@@ -1,5 +1,6 @@
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
+import 'package:grammar_quest/data/models/level_model.dart';
 import '../grammar_game.dart';
 import 'blank_slot_component.dart';
 
@@ -24,13 +25,51 @@ class ParagraphSentenceComponent extends PositionComponent {
   }
 
   void _layoutParagraph() {
+    if (game.level.type == LevelType.sentence) {
+      _layoutSentenceMode();
+    } else {
+      _layoutParagraphMode();
+    }
+  }
+
+  void _layoutSentenceMode() {
+    final words = paragraph.split(' ');
+    double xOffset = 0;
+    double yOffset = 0;
+    
+    for (int i = 0; i < words.length; i++) {
+      final slotWidth = 85.0;
+      if (xOffset + slotWidth > maxWidth) {
+        xOffset = 0;
+        yOffset += lineHeight;
+      }
+      
+      final slot = BlankSlotComponent(
+        correctWord: words[i],
+        position: Vector2(xOffset, yOffset),
+        size: Vector2(slotWidth, 24),
+      );
+      add(slot);
+      game.blankSlots.add(slot);
+      
+      xOffset += slotWidth + 8;
+    }
+    
+    size = Vector2(maxWidth, yOffset + lineHeight + 20);
+  }
+
+  void _layoutParagraphMode() {
     // Split into sentences first
     final sentences = paragraph.split('. ');
     double yOffset = 0;
     int blankIndex = 0;
     
     for (var sentence in sentences) {
-      if (!sentence.endsWith('.')) sentence = '$sentence.';
+      if (!sentence.endsWith('.') && sentence.isNotEmpty) {
+        if (!paragraph.endsWith(sentence)) {
+           sentence = '$sentence.';
+        }
+      }
       
       final words = sentence.split(' ');
       double xOffset = 0;
@@ -96,4 +135,5 @@ class ParagraphSentenceComponent extends PositionComponent {
     
     size = Vector2(maxWidth, yOffset + 20);
   }
+
 }
