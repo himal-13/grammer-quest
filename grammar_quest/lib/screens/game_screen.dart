@@ -7,7 +7,7 @@ import '../providers/coin_provider.dart';
 import '../providers/game_provider.dart';
 import '../widgets/coin_display.dart';
 import 'result_screen.dart';
-
+import '../services/ad_service.dart';
 class GameScreen extends StatefulWidget {
   final Level level;
   const GameScreen({super.key, required this.level});
@@ -39,12 +39,80 @@ class _GameScreenState extends State<GameScreen> {
 
     bool isFirstTime = !gameProvider.isLevelCompleted(widget.level.id);
     int xpGained = isFirstTime ? 200 : 50;
-    int coinsEarned = 0; // No coins for level completion
+    int coinsEarned = 0; // Default to 0 for replay
     int stars = 0; // Stars are removed
 
+    if (isFirstTime) {
+      coinsEarned = (widget.level.id <= 5) ? 10 : 20;
+      coinProvider.addCoins(coinsEarned);
+
+      // Show beautiful dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.purple.shade50, Colors.white],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.purple.shade200, width: 2),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.stars_rounded, color: Colors.amber, size: 64),
+                const SizedBox(height: 16),
+                const Text(
+                  'Level Complete!',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purple,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '+$coinsEarned Coins',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _navigateToResultScreen(perfect, isFirstTime, xpGained, coinsEarned, stars);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  ),
+                  child: const Text('Continue', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else {
+      _navigateToResultScreen(perfect, isFirstTime, xpGained, coinsEarned, stars);
+    }
+    
     coinProvider.addXP(xpGained);
     gameProvider.completeLevel(widget.level.id, stars);
+  }
 
+  void _navigateToResultScreen(bool perfect, bool isFirstTime, int xpGained, int coinsEarned, int stars) {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
@@ -91,7 +159,7 @@ class _GameScreenState extends State<GameScreen> {
         ),
       );
     } else {
-      _showNoCoinsSnackBar();
+      _showNoCoinsDialog();
     }
   }
 
@@ -228,7 +296,7 @@ class _GameScreenState extends State<GameScreen> {
                     if (coinProvider.spendCoins(40)) {
                       _game.skipLevel();
                     } else {
-                      _showNoCoinsSnackBar();
+                      _showNoCoinsDialog();
                     }
                   },
                   color: Colors.purple,
@@ -392,16 +460,50 @@ class _GameScreenState extends State<GameScreen> {
         ),
       );
     } else {
-      _showNoCoinsSnackBar();
+      _showNoCoinsDialog();
     }
   }
 
-  void _showNoCoinsSnackBar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('💰 Not enough coins! Complete levels to earn more.'),
-        backgroundColor: Colors.orange,
+  void _showNoCoinsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Out of Coins!'),
+        content: const Text('Watch a short video to get 20 coins?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Maybe Later'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _watchAd();
+            },
+            child: const Text('Watch Ad'),
+          ),
+        ],
       ),
+    );
+  }
+
+  void _watchAd() {
+    if (!AdService.isAdLoaded) {
+      AdService.loadRewardedAd();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ad is loading, please try again in a moment.')),
+      );
+      return;
+    }
+    
+    AdService.showRewardedAd(
+      onUserEarnedReward: (reward) {
+        final coinProvider = Provider.of<CoinProvider>(context, listen: false);
+        coinProvider.addCoins(20);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('💰 +20 coins received!')),
+        );
+      },
     );
   }
 }

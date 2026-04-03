@@ -10,7 +10,7 @@ import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-//   await MobileAds.instance.initialize();
+  await MobileAds.instance.initialize();
   await StorageService.init();
   
   runApp(

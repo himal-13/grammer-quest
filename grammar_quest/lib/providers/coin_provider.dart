@@ -30,10 +30,34 @@ class CoinProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  double get xpProgress {
-    // Simple XP logic: 100 XP per level
-    return (_xp % 100) / 100.0;
+  int get currentLevelXP {
+    int level = 1;
+    int remainingXP = _xp;
+    while (true) {
+      int requiredXP = 200 + level * 100;
+      if (remainingXP >= requiredXP) {
+        remainingXP -= requiredXP;
+        level++;
+      } else {
+        break;
+      }
+    }
+    return level;
   }
 
-  int get currentLevelXP => (_xp / 100).floor() + 1;
+  double get xpProgress {
+    int level = 1;
+    int remainingXP = _xp;
+    int requiredXP = 200 + level * 100;
+    while (true) {
+      if (remainingXP >= requiredXP) {
+        remainingXP -= requiredXP;
+        level++;
+        requiredXP = 200 + level * 100;
+      } else {
+        break;
+      }
+    }
+    return remainingXP / requiredXP;
+  }
 }

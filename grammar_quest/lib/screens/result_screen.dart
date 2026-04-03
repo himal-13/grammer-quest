@@ -52,7 +52,7 @@ class _ResultScreenState extends State<ResultScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Earn Coins'),
-        content: const Text('Watch a short video to get 30 coins?'),
+        content: const Text('Watch a short video to get 20 coins?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -74,9 +74,9 @@ class _ResultScreenState extends State<ResultScreen> {
     AdService.showRewardedAd(
       onUserEarnedReward: (reward) {
         final coinProvider = Provider.of<CoinProvider>(context, listen: false);
-        coinProvider.addCoins(30);
+        coinProvider.addCoins(20);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('💰 +30 coins received!')),
+          const SnackBar(content: Text('💰 +20 coins received!')),
         );
       },
     );
@@ -173,7 +173,7 @@ class _ResultScreenState extends State<ResultScreen> {
                   OutlinedButton.icon(
                     onPressed: _showAdDialog,
                     icon: const Icon(Icons.video_collection_rounded, color: Colors.amber),
-                    label: const Text('Watch Ad for 30 💰', style: TextStyle(color: Colors.amber)),
+                    label: const Text('Watch Ad for 20 💰', style: TextStyle(color: Colors.amber)),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.amber),
                       padding: const EdgeInsets.symmetric(vertical: 12),

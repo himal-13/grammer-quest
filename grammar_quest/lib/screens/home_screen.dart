@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../widgets/coin_display.dart';
 import '../widgets/xp_bar.dart';
-import '../services/ad_service.dart';
-import '../providers/coin_provider.dart';
 import 'level_screen.dart';
 import 'settings_screen.dart';
 
@@ -88,13 +85,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                     isPrimary: true,
                   ),
-                  const SizedBox(height: 16),
-                  _buildMenuButton(
-                    context,
-                    'FREE COINS',
-                    Icons.video_collection_rounded,
-                    () => _showAdDialog(context),
-                  ),
+
                   const SizedBox(height: 16),
                   _buildMenuButton(
                     context,
@@ -115,48 +106,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
-  void _showAdDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Earn Coins'),
-        content: const Text('Watch a short video to get 30 coins?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Maybe Later'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _watchAd(context);
-            },
-            child: const Text('Watch Ad'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _watchAd(BuildContext context) {
-    if (!AdService.isAdLoaded) {
-      AdService.loadRewardedAd();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ad is loading, please try again in a moment.')),
-      );
-      return;
-    }
-    
-    AdService.showRewardedAd(
-      onUserEarnedReward: (reward) {
-        final coinProvider = Provider.of<CoinProvider>(context, listen: false);
-        coinProvider.addCoins(30);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('💰 +30 coins received!')),
-        );
-      },
-    );
-  }
 
   Widget _buildMenuButton(
     BuildContext context,
