@@ -37,22 +37,11 @@ class _GameScreenState extends State<GameScreen> {
     final coinProvider = Provider.of<CoinProvider>(context, listen: false);
     final gameProvider = Provider.of<GameProvider>(context, listen: false);
 
-    int coinsEarned = 20;
-    int xpGained = 50;
-    int stars = 1;
-    
-    if (perfect) {
-      coinsEarned += 40;
-      xpGained += 50;
-      stars = 3;
-    } else {
-      // Check if all blanks are filled (not necessarily perfect)
-      if (_game.correctlyFilled == widget.level.blanks) {
-        stars = 2;
-      }
-    }
+    bool isFirstTime = !gameProvider.isLevelCompleted(widget.level.id);
+    int xpGained = isFirstTime ? 200 : 50;
+    int coinsEarned = 0; // No coins for level completion
+    int stars = 0; // Stars are removed
 
-    coinProvider.addCoins(coinsEarned);
     coinProvider.addXP(xpGained);
     gameProvider.completeLevel(widget.level.id, stars);
 

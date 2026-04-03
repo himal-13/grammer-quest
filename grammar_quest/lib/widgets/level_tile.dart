@@ -87,17 +87,6 @@ class _LevelTileState extends State<LevelTile> with SingleTickerProviderStateMix
                         color: widget.isNext ? theme.primaryColor : null,
                       ),
                     ),
-                    if (widget.isCompleted)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(3, (index) {
-                          return Icon(
-                            Icons.star_rounded,
-                            color: index < widget.stars ? Colors.amber : Colors.grey.withOpacity(0.3),
-                            size: 16,
-                          );
-                        }),
-                      ),
                   ],
                 ),
                 

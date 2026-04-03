@@ -1,9 +1,12 @@
-import 'package:flutter/material.dart';
 import 'package:confetti/confetti.dart';
-import '../data/models/level_model.dart';
-import '../data/level_data.dart';
-import 'game_screen.dart';
-import 'level_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:grammar_quest/data/level_data.dart';
+import 'package:grammar_quest/data/models/level_model.dart';
+import 'package:grammar_quest/screens/game_screen.dart';
+
+import '../services/ad_service.dart';
+import '../providers/coin_provider.dart';
+import 'package:provider/provider.dart';
 
 class ResultScreen extends StatefulWidget {
   final Level level;
@@ -34,9 +37,8 @@ class _ResultScreenState extends State<ResultScreen> {
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 3));
-    if (widget.stars >= 2) {
-      _confettiController.play();
-    }
+    _confettiController.play();
+    AdService.loadRewardedAd();
   }
 
   @override
@@ -45,115 +47,174 @@ class _ResultScreenState extends State<ResultScreen> {
     super.dispose();
   }
 
+  void _showAdDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Earn Coins'),
+        content: const Text('Watch a short video to get 30 coins?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Maybe Later'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _watchAd();
+            },
+            child: const Text('Watch Ad'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _watchAd() {
+    AdService.showRewardedAd(
+      onUserEarnedReward: (reward) {
+        final coinProvider = Provider.of<CoinProvider>(context, listen: false);
+        coinProvider.addCoins(30);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('💰 +30 coins received!')),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
-    final isSmallScreen = size.height < 600;
-
+    
     return Scaffold(
       body: Stack(
         children: [
           SafeArea(
             child: Padding(
-              padding: EdgeInsets.all(isSmallScreen ? 16.0 : 24.0),
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Spacer(),
+                  const SizedBox(height: 20),
                   Text(
-                    widget.stars == 3 ? 'Perfect!' : 'Level Complete!',
+                    'Level Completed!',
+                    textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: isSmallScreen ? 24 : 32, 
+                      fontSize: 32, 
                       fontWeight: FontWeight.bold,
-                      color: widget.stars == 3 ? Colors.amber : theme.primaryColor,
+                      color: theme.primaryColor,
                     ),
                   ),
-                  SizedBox(height: isSmallScreen ? 8 : 16),
+                  const SizedBox(height: 8),
                   Text(
                     widget.level.title,
-                    style: TextStyle(fontSize: isSmallScreen ? 16 : 20, fontWeight: FontWeight.w500),
-                  ),
-                  SizedBox(height: isSmallScreen ? 12 : 24),
-                  
-                  // Stars display
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(3, (index) {
-                      final hasStar = index < widget.stars;
-                      return Icon(
-                        Icons.star_rounded,
-                        size: isSmallScreen ? 48 : 64,
-                        color: hasStar ? Colors.amber : Colors.grey.withOpacity(0.3),
-                      );
-                    }),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 18, color: Colors.grey),
                   ),
                   
-                  SizedBox(height: isSmallScreen ? 16 : 32),
+                  const SizedBox(height: 32),
                   
-                  // Stats in a row to save vertical space
+                  // XP Gained
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.bolt_rounded, color: Colors.blue, size: 24),
+                          const SizedBox(width: 8),
+                          Text(
+                            '+${widget.xpGained} XP',
+                            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.blue),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Full Paragraph Display
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: theme.cardColor,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          widget.completedParagraph,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            height: 1.6,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // Reward Ad Button
+                  OutlinedButton.icon(
+                    onPressed: _showAdDialog,
+                    icon: const Icon(Icons.video_collection_rounded, color: Colors.amber),
+                    label: const Text('Watch Ad for 30 💰', style: TextStyle(color: Colors.amber)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.amber),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  // Action Buttons
                   Row(
                     children: [
-                      Expanded(child: _buildMiniStat(context, '+${widget.coinsEarned}', Icons.monetization_on, Colors.amber)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _buildMiniStat(context, '+${widget.xpGained}', Icons.bolt, Colors.blue)),
-                    ],
-                  ),
-                  
-                  const Spacer(),
-                  
-                  // Buttons
-                  Column(
-                    children: [
-                      if (widget.level.id < LevelData.getTotalLevels())
-                        SizedBox(
-                          width: double.infinity,
-                          child: _buildActionButton(
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pushReplacement(
                             context,
-                            'Next Level',
-                            Icons.skip_next_rounded,
-                            () {
+                            MaterialPageRoute(builder: (context) => GameScreen(level: widget.level)),
+                          ),
+                          child: const Text('Replay'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      if (widget.level.id < LevelData.getTotalLevels())
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () {
                               final nextLevel = LevelData.getLevel(widget.level.id + 1);
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(builder: (context) => GameScreen(level: nextLevel)),
                               );
                             },
-                            isPrimary: true,
+                            style: theme.elevatedButtonTheme.style,
+                            child: const Text('Next Level'),
                           ),
                         ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildActionButton(
-                              context,
-                              'Replay',
-                              Icons.replay_rounded,
-                              () => Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(builder: (context) => GameScreen(level: widget.level)),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildActionButton(
-                              context,
-                              'Levels',
-                              Icons.grid_view_rounded,
-                              () => Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(builder: (context) => const LevelScreen()),
-                                (route) => route.isFirst,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  
+                  const SizedBox(height: 12),
+                  
                   TextButton(
                     onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
                     child: const Text('Back to Home'),
@@ -162,39 +223,16 @@ class _ResultScreenState extends State<ResultScreen> {
               ),
             ),
           ),
-          if (widget.stars >= 2)
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConfettiWidget(
-                confettiController: _confettiController,
-                blastDirectionality: BlastDirectionality.explosive,
-                shouldLoop: false,
-                colors: const [Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple, Colors.amber],
-                numberOfParticles: 20,
-                gravity: 0.2,
-              ),
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              shouldLoop: false,
+              colors: const [Colors.green, Colors.blue, Colors.pink, Colors.orange, Colors.purple, Colors.amber],
+              numberOfParticles: 20,
+              gravity: 0.2,
             ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMiniStat(BuildContext context, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 8),
-          Text(
-            value,
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
           ),
         ],
       ),
@@ -203,27 +241,5 @@ class _ResultScreenState extends State<ResultScreen> {
 
 
 
-  Widget _buildActionButton(
-    BuildContext context,
-    String label,
-    IconData icon,
-    VoidCallback onPressed, {
-    bool isPrimary = false,
-  }) {
-    final theme = Theme.of(context);
-    return ElevatedButton.icon(
-      icon: Icon(icon, size: 20),
-      label: Text(label, style: const TextStyle(fontSize: 16)),
-      onPressed: onPressed,
-      style: isPrimary 
-          ? theme.elevatedButtonTheme.style?.copyWith(
-              padding: const MaterialStatePropertyAll(EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
-            )
-          : ElevatedButton.styleFrom(
-              backgroundColor: theme.cardColor,
-              foregroundColor: theme.primaryColor,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            ),
-    );
-  }
+
 }
